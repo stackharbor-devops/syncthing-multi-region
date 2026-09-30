@@ -4,7 +4,7 @@ version: 0.1
 id: syncthing-multi-region
 name: Syncthing File Replication
 targetEditions: any
-baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/addon-v0.1
 description:
   short: Keeps a directory identical on every node of the app layer with Syncthing. Each node serves its own local copy - no NFS or FUSE mounts.
   text: |
