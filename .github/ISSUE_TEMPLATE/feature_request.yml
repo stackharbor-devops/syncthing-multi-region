@@ -1,0 +1,23 @@
+name: Feature request or idea
+description: Suggest a feature, an improvement or a roadmap priority
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve
+      description: The situation you are in and what is missing or painful today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: How it could work. Rough ideas are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Your setup (regions, data size, workloads), alternatives you considered, links.
