@@ -1,0 +1,60 @@
+type: install
+jpsVersion: 6.1.1
+id: sfs-storage-region
+name: Storage Cluster Region
+version: 0.1.0
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+description:
+  short: One more region of an existing SeaweedFS storage cluster
+  text: |
+    Created by the Add Region button of the Storage Cluster card. Its storage nodes are
+    enrolled into the existing control plane (mutual TLS, one-time tokens minted on the
+    control-plane node), and the control plane replicates asynchronously with the
+    other regions (filer.sync).
+
+globals:
+  base_path: ${baseUrl}
+
+# Filled in by the Add Region action (scripts/jps/ops.js add-region); the
+# platform region itself is the Install API's `region` parameter.
+settings:
+  fields:
+    - { name: region, caption: Region name, type: string, required: true }
+    - { name: nodeCount, caption: Storage nodes, type: spinner, min: 1, max: 9, default: 3 }
+    - { name: clusterName, caption: Cluster name, type: string, required: true }
+    - { name: clusterId, caption: Cluster id, type: string }
+    - { name: cpEnvName, caption: Control-plane environment, type: string, required: true }
+    - { name: cpNodeId, caption: Control-plane node id, type: string, required: true }
+    - { name: cpIp, caption: Control-plane IP, type: string, required: true }
+    - { name: cpUrl, caption: Control-plane URL, type: string, required: true }
+    - { name: caFingerprint, caption: CA fingerprint, type: string, required: true }
+
+nodes:
+  - nodeType: storage
+    nodeGroup: storage
+    displayName: Storage
+    count: ${settings.nodeCount}
+    cloudlets: 16
+    cluster: false
+    isSLBAccessEnabled: false
+
+onInstall:
+  - script: ${baseUrl}/scripts/jps/ops.js?_r=${fn.random}
+    params:
+      op: join
+      envName: ${env.envName}
+      basePath: ${globals.base_path}
+      region: ${settings.region}
+      clusterName: ${settings.clusterName}
+      clusterId: ${settings.clusterId}
+      cpEnvName: ${settings.cpEnvName}
+      cpNodeId: ${settings.cpNodeId}
+      cpIp: ${settings.cpIp}
+      cpUrl: ${settings.cpUrl}
+      caFingerprint: ${settings.caFingerprint}
+  - install:
+      jps: ${baseUrl}/addons/cluster.jps?_r=${fn.random}
+      envName: ${env.envName}
+      nodeGroup: storage
+
+success: success/region.md

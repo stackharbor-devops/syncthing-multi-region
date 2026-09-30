@@ -1,0 +1,153 @@
+type: update
+jpsVersion: 6.1.1
+id: sfs-cluster-card
+name: Storage Cluster
+version: 0.1.0
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+description:
+  short: Manage the SeaweedFS storage cluster of this region
+  text: |
+    Status, Rebalance, Heal, Backup Now, Add Region, Remove Node and single sign-on
+    into Advanced Management. Scaling the Storage layer enrolls or drains nodes
+    automatically. Uninstalling this card does not touch the cluster or its data.
+
+# Installed by manifest.jps / region.jps with nodeGroup: storage, top-level
+# buttons/menu and no `permanent`: that gives the card an Uninstall entry.
+targetNodes:
+  nodeGroup: storage
+
+globals:
+  base_path: ${baseUrl}
+
+settings:
+  addRegion:
+    submitUnchanged: true
+    fields:
+      - name: newRegion
+        caption: Platform region
+        type: regionlist
+        required: true
+        filter:
+          isActive: true
+      - name: newRegionName
+        caption: Region name
+        type: string
+        required: true
+        regex: ^[a-z][a-z0-9-]{1,30}$
+        regexText: lowercase letters, digits and dashes
+      - name: nodeCount
+        caption: Storage nodes
+        type: spinner
+        min: 1
+        max: 9
+        default: 3
+  removeNode:
+    submitUnchanged: true
+    onBeforeInit: |
+      var r = jelastic.env.control.GetEnvInfo("${env.envName}", session), vals = [], nodes, i, k = 0;
+      nodes = (r && r.nodes) ? r.nodes : [];
+      nodes.sort(function (a, b) { return a.id - b.id; });
+      for (i = 0; i < nodes.length; i++) {
+        if (String(nodes[i].nodeGroup) != "storage") continue;
+        vals.push({ value: String(nodes[i].id), caption: "Node " + nodes[i].id + " (" + nodes[i].intIP + ")" + (k++ < 3 ? " - may run a master" : "") });
+      }
+      settings.fields[0].values = vals;
+      return settings;
+    fields:
+      - name: nodeId
+        caption: Node to remove
+        type: list
+        required: true
+        values: []
+      - type: displayfield
+        markup: The node's data is moved to the other nodes first (drain), then the container is removed. Master and control-plane nodes are refused.
+
+buttons:
+  - caption: Status
+    action: status
+    confirmText: Show the cluster status?
+    loadingText: Reading cluster status...
+  - caption: Open Advanced Management
+    action: sso
+    confirmText: Open Advanced Management with a one-time sign-in link?
+    loadingText: Creating a sign-in link...
+  - caption: Rebalance
+    action: rebalance
+    confirmText: Rebalance volumes across the nodes of each region?
+    loadingText: Starting rebalance...
+  - caption: Heal
+    action: heal
+    confirmText: Repair missing replicas and check integrity?
+    loadingText: Starting heal...
+  - caption: Backup Now
+    action: backup
+    confirmText: Start a backup now?
+    loadingText: Starting backup...
+  - caption: Add Region
+    action: addRegion
+    settings: addRegion
+    title: Add a region
+    submitButtonText: Add Region
+    loadingText: Creating the region environment (this takes several minutes)...
+
+menu:
+  - caption: Remove Node
+    action: removeNode
+    settings: removeNode
+    title: Remove a storage node
+    submitButtonText: Drain and Remove
+    loadingText: Draining the node...
+
+onAfterScaleOut[storage]:
+  - ops:
+      op: enroll-new
+
+onBeforeScaleIn[storage]:
+  - ops:
+      op: drain
+      nodeIds: ${event.response.nodes.join(id,)}
+
+onAfterRedeployContainer[storage]:
+  - ops:
+      op: redeploy
+      nodeIds: ${event.params.nodeId}
+
+actions:
+  ops:
+    - script: ${globals.base_path}/scripts/jps/ops.js?_r=${fn.random}
+      params:
+        op: ${this.op}
+        nodeIds: ${this.nodeIds}
+        nodeId: ${this.nodeId}
+        newRegion: ${this.newRegion}
+        newRegionName: ${this.newRegionName}
+        nodeCount: ${this.nodeCount}
+        uid: ${user.uid}
+        email: ${user.email}
+        envName: ${env.envName}
+        basePath: ${globals.base_path}
+  status:
+    ops:
+      op: status
+  sso:
+    ops:
+      op: sso
+  rebalance:
+    ops:
+      op: rebalance
+  heal:
+    ops:
+      op: heal
+  backup:
+    ops:
+      op: backup
+  addRegion:
+    ops:
+      op: add-region
+      newRegion: ${settings.newRegion}
+      newRegionName: ${settings.newRegionName}
+      nodeCount: ${settings.nodeCount}
+  removeNode:
+    ops:
+      op: remove-node
+      nodeId: ${settings.nodeId}

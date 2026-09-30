@@ -1,0 +1,17 @@
+[Unit]
+Description=SeaweedFS volume (sfs)
+Wants=network-online.target
+After=network-online.target sfs-master.service
+ConditionPathExists=/etc/sfs/node.env
+
+[Service]
+Type=simple
+WorkingDirectory=/etc/sfs
+ExecStart=/usr/local/sbin/sfs-node run volume
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

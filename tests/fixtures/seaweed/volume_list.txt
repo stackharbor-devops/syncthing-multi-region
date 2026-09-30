@@ -1,0 +1,34 @@
+Topology volumeSizeLimit:64 MB hdd(volume:12/30 active:12 free:18 remote:0)
+  DataCenter r1 hdd(volume:12/30 active:12 free:18 remote:0)
+    Rack node1 hdd(volume:4/10 active:4 free:6 remote:0)
+      DataNode 127.0.0.1:8081 hdd(volume:4/10 active:4 free:6 remote:0)
+        Disk hdd(volume:4/10 active:4 free:6 remote:0) id:0
+          volume Id:2, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:3, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:4, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:5, Size:8, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:0, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+        Disk hdd {Size:272 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+      DataNode 127.0.0.1:8081 {Size:272 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+    Rack node1 {Size:272 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+    Rack node2 hdd(volume:5/10 active:5 free:5 remote:0)
+      DataNode 127.0.0.1:8082 hdd(volume:5/10 active:5 free:5 remote:0)
+        Disk hdd(volume:5/10 active:5 free:5 remote:0) id:0
+          volume Id:1, Size:168, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:2, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:2, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:3, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:5, Size:8, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:0, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:6, Size:8, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:0, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+        Disk hdd {Size:360 FileCount:4 DeletedFileCount:0 DeletedBytes:0} 
+      DataNode 127.0.0.1:8082 {Size:360 FileCount:4 DeletedFileCount:0 DeletedBytes:0} 
+    Rack node2 {Size:360 FileCount:4 DeletedFileCount:0 DeletedBytes:0} 
+    Rack node3 hdd(volume:3/10 active:3 free:7 remote:0)
+      DataNode 127.0.0.1:8083 hdd(volume:3/10 active:3 free:7 remote:0)
+        Disk hdd(volume:3/10 active:3 free:7 remote:0) id:0
+          volume Id:1, Size:168, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:2, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:4, Size:88, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:1, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+          volume Id:6, Size:8, ReplicaPlacement:010, Collection:, Version:3, Ttl:, FileCount:0, DeleteCount:0, DeletedByteCount:0, ReadOnly:false, ModifiedAtSecond:1790745778 
+        Disk hdd {Size:264 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+      DataNode 127.0.0.1:8083 {Size:264 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+    Rack node3 {Size:264 FileCount:3 DeletedFileCount:0 DeletedBytes:0} 
+  DataCenter r1 {Size:896 FileCount:10 DeletedFileCount:0 DeletedBytes:0} 
+total size:896 file_count:10 

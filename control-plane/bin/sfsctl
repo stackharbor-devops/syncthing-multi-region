@@ -1,0 +1,8 @@
+#!/bin/sh
+# sfsctl CLI wrapper. Installed as /usr/local/bin/sfsctl; code lives in /opt/sfsctl.
+if [ -d /opt/sfsctl/sfsctl ]; then
+  SFSCTL_HOME=/opt/sfsctl
+else
+  SFSCTL_HOME=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+fi
+PYTHONPATH="$SFSCTL_HOME" exec /usr/bin/env python3 -m sfsctl.cli "$@"

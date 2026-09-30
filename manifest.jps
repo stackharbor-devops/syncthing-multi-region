@@ -1,0 +1,99 @@
+type: install
+jpsVersion: 6.1.1
+id: sfs-storage-cluster
+name: Distributed Storage Cluster (SeaweedFS)
+version: 0.1.0
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+description:
+  text: |
+    Distributed POSIX storage for Virtuozzo Application Platform: a SeaweedFS cluster
+    (masters, volume servers, filers) with its own control plane, mutual-TLS enrollment,
+    self-healing replication and an Advanced Management console. Mount it on any
+    application layer with the Storage Mount add-on; add regions for asynchronous
+    cross-region replication.
+  short: SeaweedFS storage cluster with control plane and management UI
+categories:
+  - apps/clusters
+  - apps/file-storage
+
+# Everything the nodes download comes from this URL; the card's buttons use the
+# captured copy (${baseUrl} does not resolve reliably at button-click time).
+globals:
+  base_path: ${baseUrl}
+  sfsRegion: ""
+  sfsCpUrl: ""
+  sfsClusterId: ""
+
+settings:
+  fields:
+    - name: clusterName
+      caption: Cluster name
+      type: string
+      default: storage
+      required: true
+      regex: ^[a-z][a-z0-9-]{1,30}$
+      regexText: lowercase letters, digits and dashes, 2-31 characters
+    - name: region
+      caption: Region
+      type: regionlist
+      required: true
+      filter:
+        isActive: true
+    - name: storageCount
+      caption: Storage nodes
+      type: spinner
+      min: 1
+      max: 9
+      default: 3
+    - name: storageCloudlets
+      caption: Cloudlets per node
+      type: spinner
+      min: 8
+      max: 64
+      default: 16
+    # TODO(sfs): verify live that diskLimit is taken in GB on this platform version.
+    - name: diskLimit
+      caption: Disk per node (GB)
+      type: spinner
+      min: 10
+      max: 2000
+      default: 100
+    - type: displayfield
+      markup: "The first region env is the primary - it runs the control plane and the HTTPS entry point (nginx). 1 node = no local redundancy; 2+ nodes = 2 copies on different nodes."
+
+# TODO(sfs): verify live that a root-level region places the env in the chosen region
+# (the install dialog may also show its own region selector).
+region: ${settings.region}
+# Built-in SSL on the env domain: the platform SLB terminates HTTPS in front of nginx.
+ssl: true
+
+nodes:
+  - nodeType: storage
+    nodeGroup: storage
+    displayName: Storage
+    count: ${settings.storageCount}
+    cloudlets: ${settings.storageCloudlets}
+    diskLimit: ${settings.diskLimit}
+    cluster: false
+    isSLBAccessEnabled: false
+  - nodeType: nginx
+    nodeGroup: bl
+    displayName: Management entry
+    count: 1
+    cloudlets: 8
+
+onInstall:
+  - script: ${baseUrl}/scripts/jps/ops.js?_r=${fn.random}
+    params:
+      op: deploy
+      envName: ${env.envName}
+      envDomain: ${env.domain}
+      basePath: ${globals.base_path}
+      clusterName: ${settings.clusterName}
+      region: ${settings.region}
+  - install:
+      jps: ${baseUrl}/addons/cluster.jps?_r=${fn.random}
+      envName: ${env.envName}
+      nodeGroup: storage
+
+success: success/install.md

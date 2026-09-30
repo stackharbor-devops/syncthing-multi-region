@@ -1,0 +1,82 @@
+type: update
+jpsVersion: 6.1.1
+id: sfs-storage-mount
+name: Storage Mount
+version: 0.1.0
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+description:
+  short: Mount the SeaweedFS storage cluster on this layer (FUSE, local cache)
+  text: |
+    Installs weed and a systemd mount unit on every node of this layer. Metadata is
+    served from a local cache kept current by the filer; file data from a local chunk
+    cache after the first read. Each node gets its own client certificate from the
+    cluster's control plane.
+
+targetNodes:
+  nodeGroup:
+    - cp
+    - bl
+    - cache
+    - extra
+    - vds
+
+globals:
+  base_path: ${baseUrl}
+  sourceEnv: ""
+  mountPath: /mnt/sfs
+  cacheMb: "1024"
+
+settings:
+  fields:
+    - name: sourceEnv
+      caption: Storage region environment
+      type: string
+      required: true
+      tooltip: Name of the storage cluster environment of the region to mount (usually the one closest to this environment)
+    - name: mountPath
+      caption: Mount path
+      type: string
+      default: /mnt/sfs
+      required: true
+      regex: ^/[A-Za-z0-9._/-]+$
+    - name: cacheMb
+      caption: Local cache (MB)
+      type: spinner
+      min: 128
+      max: 65536
+      default: 1024
+
+onInstall:
+  # Saved first: scale-out and uninstall events read the choices from globals.
+  - setGlobals:
+      sourceEnv: ${settings.sourceEnv}
+      mountPath: ${settings.mountPath}
+      cacheMb: ${settings.cacheMb}
+  - mount
+
+onAfterScaleOut[${targetNodes.nodeGroup}]:
+  - mount
+
+# Best effort (the unmount op never fails): a failing step here would make the
+# card impossible to remove.
+onUninstall:
+  - script: ${globals.base_path}/scripts/jps/ops.js?_r=${fn.random}
+    params:
+      op: unmount
+      envName: ${env.envName}
+      nodeGroup: ${targetNodes.nodeGroup}
+      mountPath: ${globals.mountPath}
+
+actions:
+  mount:
+    - script: ${globals.base_path}/scripts/jps/ops.js?_r=${fn.random}
+      params:
+        op: mount
+        envName: ${env.envName}
+        nodeGroup: ${targetNodes.nodeGroup}
+        basePath: ${globals.base_path}
+        sourceEnv: ${globals.sourceEnv}
+        mountPath: ${globals.mountPath}
+        cacheMb: ${globals.cacheMb}
+
+success: success/mount.md

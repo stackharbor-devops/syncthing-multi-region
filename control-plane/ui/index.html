@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<title>Storage Cluster - Advanced Management</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><span id="cluster-name">Storage Cluster</span></div>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#overview" data-page="overview">Overview</a>
+    <a href="#nodes" data-page="nodes">Nodes</a>
+    <a href="#regions" data-page="regions">Regions</a>
+    <a href="#replication" data-page="replication">Replication</a>
+    <a href="#backups" data-page="backups">Backups</a>
+    <a href="#jobs" data-page="jobs">Jobs</a>
+    <a href="#audit" data-page="audit">Audit</a>
+    <a href="#tokens" data-page="tokens" data-admin hidden>API Tokens</a>
+  </nav>
+  <div class="me"><span id="health-badge" class="badge">...</span><span id="me-name"></span><button type="button" id="logout" class="btn small ghost">Sign out</button></div>
+</header>
+<div id="banner" class="banner" role="alert" hidden></div>
+<main id="main" tabindex="-1" aria-live="polite"><p class="muted pad">Loading...</p></main>
+<dialog id="dialog" aria-labelledby="dialog-title">
+  <form method="dialog" id="dialog-form">
+    <h2 id="dialog-title"></h2>
+    <div id="dialog-body"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="dialog-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="dialog-ok">OK</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

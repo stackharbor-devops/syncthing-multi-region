@@ -1,0 +1,7 @@
+[Unit]
+Description=sfs node heartbeat to the control plane
+ConditionPathExists=/etc/sfs/node.env
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/sfs-node heartbeat
