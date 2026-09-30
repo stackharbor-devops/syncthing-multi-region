@@ -3,7 +3,7 @@ jpsVersion: 6.1.1
 id: sfs-cluster-card
 name: Storage Cluster
 version: 0.1.0
-baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/main
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/platform-v0
 description:
   short: Manage the SeaweedFS storage cluster of this region
   text: |
