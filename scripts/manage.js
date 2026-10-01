@@ -140,7 +140,10 @@ function normPath(p) {
     return p;
 }
 function validPath(p) {
-    return /^\/[A-Za-z0-9._\/-]*[A-Za-z0-9_-]$/.test(p) && !/(^|\/)\.\.?(\/|$)/.test(p) && !/\/\//.test(p);
+    // No "//" inside a regular expression literal anywhere in this file: the platform's
+    // script engine reads it as a comment and fails with "unterminated regular expression
+    // literal" (seen live, 2026-10-01). A double slash is checked with indexOf instead.
+    return /^\/[A-Za-z0-9._\/-]*[A-Za-z0-9_-]$/.test(p) && !/(^|\/)\.\.?(\/|$)/.test(p) && p.indexOf("/" + "/") < 0;
 }
 function normIgnore(t) {
     return String(t || "").replace(/\r\n?/g, "\n").replace(/\s+$/, "");

@@ -51,6 +51,21 @@ def line_of(text, needle):
     return text.count("\n", 0, i) + 1 if i >= 0 else None
 
 
+# The platform's script engine treats "//" as the start of a comment even inside a
+# regular expression literal such as /\/\//, and then fails with "unterminated regular
+# expression literal". Flag a backslash followed by two slashes in code lines.
+REGEX_DOUBLE_SLASH = re.compile(r"\\//")
+
+
+def platform_js_check(src, path, label, raw_text):
+    for n, line in enumerate(src.splitlines(), 1):
+        if line.strip().startswith("//"):
+            continue
+        if REGEX_DOUBLE_SLASH.search(line):
+            report("error", path, "%s line %d: '//' inside a regular expression breaks the platform's script engine - "
+                   "use indexOf or a {2} quantifier instead" % (label, n), line_of(raw_text, line.strip()) if label != "file" else n)
+
+
 def node_check(src, path, label, raw_text):
     # ${...} placeholders are filled in by the platform before the script runs.
     code = re.sub(r"\$\{[^}]*\}", "0", src)
@@ -82,6 +97,7 @@ def walk(node, path, where, raw_text):
             here = "%s.%s" % (where, k) if where else str(k)
             if k == "script" and isinstance(v, str) and "\n" in v:
                 node_check(v, path, here, raw_text)
+                platform_js_check(v, path, here, raw_text)
             if isinstance(k, str) and (k == "cmd" or k.startswith("cmd[")):
                 for c in (v if isinstance(v, list) else [v]):
                     if not isinstance(c, str):
@@ -119,6 +135,7 @@ def main():
     for p in sorted(glob.glob("scripts/**/*.js", recursive=True)):
         text = open(p, encoding="utf-8").read()
         node_check(text, p, "file", text)
+        platform_js_check(text, p, "file", text)
     for p in sorted(glob.glob("scripts/**/*.sh", recursive=True)):
         r = subprocess.run(["bash", "-n", p], capture_output=True, text=True)
         if r.returncode:
