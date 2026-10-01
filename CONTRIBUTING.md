@@ -45,6 +45,9 @@ It needs Python 3, Node.js and bash. It checks that every `.jps` is valid YAML, 
 JavaScript in `script:` blocks and `scripts/**/*.js` parses, that shell scripts parse, and
 the first rule below.
 
+A change to `scripts/` or `manifest.jps` should also pass the tests in `tests/` (unit,
+node runner and end to end, with Docker); the commands are in the README's Tests section.
+
 ## Rules that have bitten us before
 
 - **No shell `${VAR}` inside `cmd` bodies of `.jps` files.** The platform treats `${...}`

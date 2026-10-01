@@ -1,0 +1,254 @@
+type: update
+jpsVersion: 6.1.1
+version: 0.1
+id: syncthing-multi-region
+name: Syncthing File Replication
+targetEditions: any
+baseUrl: https://raw.githubusercontent.com/stackharbor-devops/syncthing-multi-region/addon-v0.1
+description:
+  short: Keeps a directory identical on every node of the app layer with Syncthing. Each node serves its own local copy - no NFS or FUSE mounts.
+  text: |
+    Keeps a directory (by default the webroot /var/www/webroot/ROOT) identical
+    on every node of the app layer. Syncthing runs on every node and the nodes
+    replicate directly over the private network; each node reads its own local
+    copy, so page loads never touch the network.
+
+    On install the master node's copy is the starting content (or the copy of
+    the node named in the form); the install is refused when the master holds
+    far fewer files than another node. Every other node first only receives
+    from a sending node: it pulls the current state, moves its own differing
+    files into its version store (/var/lib/stsync/versions, never served) and
+    only then starts sending. New nodes from scaling out join the same way.
+
+    Settings are kept on the platform and re-applied on scale out and in,
+    redeploy, migration and clone. Uninstall stops replication and leaves every
+    file in place.
+
+# ---------------------------------------------------------------------------
+# Structure (v0.1, build contract: docs/DESIGN.md)
+#
+# This manifest IS the add-on card: top-level buttons, no `addons:` section and
+# no `permanent`, installed on the app layer (nodeGroup cp) - that is what gives
+# the card an Uninstall entry.
+#
+#   scripts/manage.js   install, Configure, events, Status, Rescan
+#   scripts/stsync.sh   node runner, installed as /usr/local/sbin/stsync
+#
+# Settings are kept in the cp node group's data under the key "stSync" - never
+# under "globals".
+# ---------------------------------------------------------------------------
+
+targetNodes:
+  nodeGroup: cp
+
+globals:
+  # ${baseUrl} is captured once at install; actions reached from the card's
+  # buttons and from events use ${globals.base_path}.
+  base_path: ${baseUrl}
+  stReport: ""
+
+settings:
+  main:
+    # Save stays enabled when nothing was changed: it re-applies the settings
+    # on every node (for example after a node was repaired by hand).
+    submitUnchanged: true
+    # Configure: show the settings in force (read from the node group), with
+    # the directory read-only. After a failed read the ignore rules are left
+    # empty, which Save treats as "keep the current rules".
+    onBeforeInit: |
+      var envName = "${env.envName:}", s = null, err = "", r, g, i, f;
+      try {
+        if (envName) {
+          r = jelastic.env.control.GetNodeGroups(envName, session);
+          if (!r || r.result != 0) err = (r && r.error) ? String(r.error) : "result " + (r ? r.result : "empty");
+          g = (r && r.result == 0) ? (r.object || []) : [];
+          for (i = 0; i < g.length; i++) {
+            if (String(g[i].name) != "cp" || g[i].stSync === undefined || g[i].stSync === null || String(g[i].stSync) === "") continue;
+            s = JSON.parse(String(g[i].stSync));
+          }
+        }
+      } catch (e) { err = String(e); s = null; }
+      for (i = 0; i < settings.fields.length; i++) {
+        f = settings.fields[i];
+        if (s && f.name == "path" && s.path) {
+          f["default"] = f.value = String(s.path);
+          f.readOnly = true;
+          f.caption = "Directory (fixed)";
+          f.tooltip = "The replicated directory is set at install and cannot be changed.";
+        }
+        if (s && f.name == "ignore" && s.ignore !== undefined) f["default"] = f.value = String(s.ignore);
+        if (s && f.name == "delay" && s.delay) f["default"] = f.value = parseInt(s.delay, 10);
+        if (s && f.name == "versionsDays" && s.versionsDays !== undefined) f["default"] = f.value = parseInt(s.versionsDays, 10);
+        if (err && f.name == "ignore") f["default"] = f.value = "";
+      }
+      // The starting copy is chosen at install only.
+      for (i = settings.fields.length - 1; s && i >= 0; i--) {
+        if (settings.fields[i].name == "seedNode") settings.fields.splice(i, 1);
+      }
+      if (err) {
+        settings.fields.unshift({ type: "displayfield", cls: "warning", hideLabel: true, height: 60,
+          markup: "The current settings could not be read (" + err + "). The ignore rules are left empty: Save keeps the current ones. Check the other values before saving, or close this form and open it again." });
+      }
+      return settings;
+    fields:
+      - type: string
+        name: path
+        caption: Directory
+        default: /var/www/webroot/ROOT
+        required: true
+        regex: "^/[A-Za-z0-9._/-]*[A-Za-z0-9_-]$"
+        regexText: An absolute path such as /var/www/webroot/ROOT.
+        tooltip: The directory kept identical on every node of the app layer. It must be on the node's own disk (not NFS or FUSE), and it cannot be changed after install.
+      - type: text
+        name: ignore
+        caption: Ignore rules
+        height: 150
+        tooltip: "Syncthing .stignore patterns, one per line: matching files are neither sent nor deleted, each node keeps its own. (?d) lets Syncthing delete them when their directory is removed; // starts a comment. Leaving the field empty keeps the current rules - to have none, enter just a comment line."
+        default: |
+          // Caches, logs and temporary files: each node keeps its own
+          (?d)/wp-content/cache
+          (?d)/wp-content/upgrade
+          (?d)*.log
+          (?d).DS_Store
+          (?d)Thumbs.db
+      - type: spinner
+        name: delay
+        caption: Change delay (s)
+        tooltip: How long a node collects changes before it sends them.
+        min: 1
+        max: 60
+        default: 2
+      - type: spinner
+        name: versionsDays
+        caption: Keep versions (days)
+        tooltip: Replaced and deleted files are kept this many days in /var/lib/stsync/versions on each node (outside the webroot, never served). 0 turns versioning off - a joining node's files that differ from the cluster's are then replaced without a copy (files that only it has are always kept).
+        min: 0
+        max: 365
+        default: 14
+      - type: string
+        name: seedNode
+        caption: Starting copy (node id)
+        required: false
+        regex: "^[0-9]*$"
+        regexText: The id of a node of the app layer, for example 12345.
+        tooltip: "Install only. Empty: the master node's copy is the starting content of every node, and the install is refused when another node holds far more files (so a master with an empty or partial copy never replaces the site). A node id: that node's copy is the starting content, without that check."
+
+buttons:
+  - caption: Status
+    action: status
+    confirmText: Show the replication status of every node?
+    loadingText: Reading the status of every node...
+  - caption: Configure
+    action: configure
+    settings: main
+    submitUnchanged: true
+    submitButtonText: Save
+    loadingText: Applying the settings on every node...
+    successText: Settings saved and applied on every node.
+  - caption: Rescan
+    action: rescan
+    confirmText: Rescan the directory on every node now? Changes are normally picked up within seconds; a rescan helps when the file watcher missed changes.
+    loadingText: Starting a rescan...
+    successText: A rescan was started on every node.
+
+onInstall:
+  - manage:
+      op: apply
+      phase: install
+
+onAfterScaleOut[cp]:
+  - manage:
+      op: apply
+      phase: scale
+
+onAfterScaleIn[cp]:
+  - manage:
+      op: apply
+      phase: scale
+
+onAfterRedeployContainer[cp]:
+  - manage:
+      op: apply
+      phase: redeploy
+
+onAfterMigrate:
+  - manage:
+      op: apply
+      phase: migrate
+
+# The copy gets new identities and its own mesh; the original is not touched.
+onAfterClone:
+  - manage:
+      op: apply
+      phase: clone
+      cloneEnvName: ${event.response.env.envName}
+
+# Inline on purpose: it must work even when the package's scripts cannot be
+# downloaded, and it never fails - a failing step would make the card
+# impossible to remove. Files under the directory stay in place; old versions
+# are moved to /root/stsync-versions-<time> by the runner.
+onUninstall:
+  - script: |
+      var env = "${env.envName}", base = "${globals.base_path}", path = "/var/www/webroot/ROOT", r, i, s, url, cmd;
+      function q(x) { return "'" + String(x).replace(/'/g, "'\\''") + "'"; }
+      try {
+        r = jelastic.env.control.GetNodeGroups(env, session);
+        for (i = 0; r && r.result == 0 && i < (r.object || []).length; i++) {
+          if (String(r.object[i].name) != "cp" || !r.object[i].stSync) continue;
+          s = JSON.parse(String(r.object[i].stSync));
+          if (s && s.path) path = String(s.path);
+        }
+      } catch (e) {}
+      url = q(String(base).replace(/\/+$/, "") + "/scripts/stsync.sh?_r=" + Math.floor(Math.random() * 1e9));
+      cmd = [": stsync uninstall",
+        "R=/usr/local/sbin/stsync",
+        "if [ ! -x $R ]; then T=$(mktemp); if { timeout 60 curl -fsSL --connect-timeout 10 -o $T " + url + " || timeout 60 wget -q -T 10 -t 1 -O $T " + url + "; } 2>/dev/null && grep -q STSYNC_RESULT $T && bash -n $T; then install -m 0755 $T $R; fi; rm -f $T; fi",
+        "if [ -x $R ]; then $R remove --path " + q(path) + "; else systemctl disable --now stsync >/dev/null 2>&1; rm -f /etc/systemd/system/stsync.service /etc/stsync.env; systemctl daemon-reload >/dev/null 2>&1; echo 'the runner could not be downloaded: only the service was stopped and removed'; fi",
+        "true"].join("\n");
+      try {
+        r = jelastic.env.control.GetEnvInfo(env, session);
+        for (i = 0; r && r.result == 0 && i < (r.nodes || []).length; i++) {
+          if (String(r.nodes[i].nodeGroup) != "cp") continue;
+          try { jelastic.env.control.ExecCmdById(env, session, r.nodes[i].id, toJSON([{ command: cmd }]), true, "root"); } catch (e2) {}
+        }
+      } catch (e3) {}
+      try {
+        r = jelastic.env.control.ApplyNodeGroupData(env, session, "cp", toJSON({ stSync: "" }));
+        if (!r || r.result != 0) jelastic.env.control.ApplyNodeGroupData(env, session, "cp", { stSync: "" });
+      } catch (e4) {}
+      return { result: 0 };
+
+actions:
+  manage:
+    - script: ${globals.base_path}/scripts/manage.js?_r=${fn.random}
+      params:
+        op: ${this.op}
+        phase: ${this.phase}
+        envName: ${env.envName}
+        cloneEnvName: ${this.cloneEnvName}
+        basePath: ${globals.base_path}
+        path: ${settings.path}
+        ignore: ${settings.ignore}
+        delay: ${settings.delay}
+        versionsDays: ${settings.versionsDays}
+        seedNode: ${settings.seedNode}
+
+  configure:
+    - manage:
+        op: apply
+        phase: configure
+
+  status:
+    - manage:
+        op: status
+
+  rescan:
+    - manage:
+        op: rescan
+
+success: |
+  **Syncthing file replication is installed.**
+
+  ${globals.stReport}
+
+  The card on the app layer has **Status**, **Configure** and **Rescan**. Status shows each node's sync state, peers, errors and conflict copies.
